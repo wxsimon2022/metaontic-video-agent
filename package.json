@@ -1,0 +1,41 @@
+{
+  "name": "metaontic-video-agent",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness agent preset: a video director that turns an idea into a Seedance short video with MetaOnticVideo - script, shot list, per-shot prompts, generation, QA and ffmpeg assembly.",
+  "license": "MIT",
+  "author": "wxsimon2022",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wxsimon2022/metaontic-video-agent.git"
+  },
+  "homepage": "https://github.com/wxsimon2022/metaontic-video-agent#readme",
+  "bugs": {
+    "url": "https://github.com/wxsimon2022/metaontic-video-agent/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "agent-preset",
+    "video",
+    "seedance",
+    "short-video",
+    "metaontic-video"
+  ],
+  "files": [
+    "cordis.patch.yml",
+    "skills",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
