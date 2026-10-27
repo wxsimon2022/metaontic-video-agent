@@ -37,7 +37,7 @@
 
 ```text
 brief.md            一句话创意、规格、受众、限制
-script.md           分镜脚本 + 完整台词
+script.md           分镜脚本 + 完整台词（draft / approved）
 shots.json          镜头清单、任务 ID、生成状态
 prompts/01-*.txt    每镜最终提交的提示词
 clips/              Seedance 分段
@@ -45,59 +45,174 @@ final/              合成后的成片
 production.md       任务 ID、耗时、验收记录
 ```
 
-## 安装
+## 从零安装（含 MetaOnticVideo）
 
-### 前置
+按顺序做 0–5 步。只装本 Agent 是不够的：**没有 MetaOnticVideo，就没有 `video_generate`，只能写脚本不能出片。**
 
-1. 已安装并启用 **MetaOnticVideo** 插件，且上游可用（`video_generate` 能正常生成）。
-2. 本机有 `ffmpeg` / `ffprobe`（多镜合成需要；单镜直出不需要）。
+### 0. 装 Harness 和 ffmpeg
 
-### 安装本包
+| 要装什么 | 为什么 | 怎么装 |
+| --- | --- | --- |
+| DeepSeek Harness | 插件、工具、智能体都跑在它里面 | 装 Desktop 版（或 Web 版） |
+| `ffmpeg` + `ffprobe` | 多镜合成、探测时长 | Mac：`brew install ffmpeg`；Windows：`winget install Gyan.FFmpeg`；Linux：`sudo apt install ffmpeg` |
 
-在 Harness 侧栏打开 **插件 → 安装**，填下面任意一种 spec：
+验证：
+
+```bash
+node -v && ffmpeg -version | head -1 && ffprobe -version | head -1
+```
+
+三条都打印版本号就齐了。  
+装了但不在 PATH：在 MetaOnticVideo 配置里把 `ffmpegBinary` / `ffprobeBinary` 填绝对路径（Mac 常见 `/opt/homebrew/bin/ffmpeg`）。  
+完全没装 ffmpeg 也能出片，只是不会自动合并成一条完整视频。
+
+### 1. 装 MetaOnticVideo
+
+侧栏 **插件 → 添加插件 / 安装**，填下面任意一种 spec：
+
+| 来源 | 填什么 |
+| --- | --- |
+| GitHub（推荐） | `github:wxsimon2022/metaontic-video` |
+| npm | `metaontic-video` |
+| 本地目录 | 本机 `metaontic-video` 目录的绝对路径 |
+
+装好后确认 **MetaOnticVideo** 的开关是**打开**的。  
+改过插件代码、或刚装完第一次，**重启一次 Harness** 再继续。
+
+> 不需要 `npm install`：插件没有第三方依赖，`@deepseek-ai/schemastery` 由 Harness 自带。
+
+### 2. 配 MetaOnticVideo（填一次密钥）
+
+在 **插件 → 已安装插件 → MetaOnticVideo → 查看 / 配置** 里填：
+
+| 填什么 | 例子 |
+| --- | --- |
+| 上游 | New API 中转站（一般选这个） |
+| API Key | `sk-...`（你自己的） |
+| 基础地址 | `https://ai.bileego.com`（不要带 `/v1`，不要重复 `/api/v3`） |
+| 模型 | `doubao-seedance-2-0-mini-260615` |
+| 每段秒数 | `14`（建议 ≤14，避免刚好卡 15 秒被上游拒） |
+| 单段上限 | `15` |
+| 分辨率 | `480p` 草稿 / `720p` 定稿 |
+| 画面比例 | `9:16` 或 `16:9` |
+
+官方火山方舟（`provider: ark`）：
+
+```text
+API Key: sk-...
+模型: doubao-seedance-2-5-260628
+```
+
+也可以直接对 Agent 说「把视频插件的地址/Key/模型改成 …」，它会调 `video_config` 写回 profile。  
+手改的话，配置在 profile 的 patch 层（桌面端 `~/.dsh/profiles/desktop/cordis.patch.yml`）：
+
+```yaml
+- id: metaontic-video
+  name: metaontic-video
+  config:
+    provider: newapi
+    apiKey: 'sk-...'
+    baseUrl: 'https://ai.bileego.com'
+    model: 'doubao-seedance-2-0-mini-260615'
+    duration: 14
+    ratio: 9:16
+    resolution: 480p
+```
+
+不想把 Key 写进文件，也可以用环境变量：`NEWAPI_API_KEY`、`NEWAPI_VIDEO_BASE_URL`、`NEWAPI_VIDEO_MODEL`，官方用 `ARK_API_KEY`。  
+**Key 只放在自己的 profile / 环境变量里，不要提交到仓库，也不要写进 README。**
+
+### 3. 验证 MetaOnticVideo
+
+新会话里问一句：
+
+```text
+你现在有哪些视频工具？把名字列出来。
+```
+
+应该看到 `video_generate`、`video_extend`、`video_status`、`video_config`（旧版是 `seedance_*`）。  
+也可以：
+
+```text
+帮我查一下视频插件当前配置（video_config action=get）。
+```
+
+如果工具不存在：插件没启用、装完没重启，或者你在旧会话里；先重启 / 新建会话。  
+想真跑一次，可以让它生成一个 4 秒 480p 的测试片段（会消耗一点额度）：
+
+```text
+用 4 秒、480p、9:16 生成一个测试片段：清晨木桌上一杯冒热气的豆浆。
+```
+
+### 4. 装本 Agent
+
+侧栏 **插件 → 添加插件 / 安装**，填：
 
 | 来源 | 填什么 |
 | --- | --- |
 | GitHub | `github:wxsimon2022/metaontic-video-agent` |
-| 本地目录 | 本目录的绝对路径，例如 `~/code/metaontic-video-agent` |
-| tgz | 打包文件的绝对路径，例如 `~/Downloads/metaontic-video-agent-0.1.0.tgz` |
+| 固定版本 | `github:wxsimon2022/metaontic-video-agent#v0.1.1` |
+| 本地目录 | 本目录绝对路径，例如 `~/code/metaontic-video-agent` |
+| tgz | `~/Downloads/metaontic-video-agent-0.1.1.tgz` |
 
-也可以在仓库里自己打包：
+也可以在本仓库自己打包：
 
 ```bash
 npm pack
-# 生成 metaontic-video-agent-0.1.0.tgz
+# 生成 metaontic-video-agent-0.1.1.tgz
 ```
 
 或者让 Agent 用 `plugin_manager` 的 `install_bundle`，`target` 填同一个 spec。
 
 安装后**新建会话**，在智能体选择器里选 **视频导演**。已有会话不会自动切换预设。
 
-### 验证
+### 5. 验证 Agent
 
-新会话里问一句：
+新会话里问：
 
 ```text
-你现在是什么角色？有哪些视频工具？
+你现在是什么角色？有哪些视频工具？会不会先让我确认脚本？
 ```
 
-应该能看到：视频导演 persona、`video_generate` / `video_extend` / `video_status`、
-`bash`、文件读写、`skill`、`present`。再让它读一下 `video-director` 技能，确认技能目录挂载成功。
+应该看到：
+
+- 身份是「视频导演」；
+- 有 `video_generate` / `video_extend` / `video_status` / `video_config`；
+- 有 `bash`、文件读写、`skill`、`present`；
+- 明确说「先写脚本，你确认后才生成」。
+
+再发一个测试创意（不用真生成），看它是否只给脚本、不调用生成工具：
+
+```text
+测试一下流程，别生成：一个人早上咖啡洒了，最后笑了。15 秒竖屏，有台词。
+```
+
+它应该只写 `script.md` 并问「确认这版脚本吗？」，**不会**调用 `video_generate`。
+
+## 第一次出片
+
+打开 **视频导演** 会话，发一段创意：
+
+```text
+做一个 15 秒竖屏短视频：外卖员雨天送餐，客户开门递给他一把伞；
+他下楼后发现这单正是刚才那个差评客户下的。真实生活感，有台词，不要字幕。
+```
+
+1. 它回一份完整脚本；
+2. 你回「确认」或提修改；
+3. 它才调用 `video_generate`；
+4. 生成通常 1–5 分钟；
+5. Agent 会把成片放到 `video-projects/<slug>/final/`，并把路径和任务 ID 发给你；如果只看到 `metaontic-video/` 下的原始输出，让它移到 `final/` 或直接看那个路径。
 
 ## 分享给别人
 
-这个包**不含 API Key，也不含 MetaOnticVideo 本身**。对方需要：
-
-1. 装好 DeepSeek Harness（Desktop 或 Web）；
-2. 装好并启用 **MetaOnticVideo**，填自己的中转站地址和 Key；
-3. 本机有 `ffmpeg` / `ffprobe`；
-4. 装这个 agent 包，新建会话选 **视频导演**。
+对方也要走上面的 **0–5 步**。这个包**不含 API Key，也不含 MetaOnticVideo 本身**。
 
 三种分发方式：
 
 | 方式 | 你做什么 | 对方怎么装 |
 | --- | --- | --- |
-| 发 tgz | 把 `metaontic-video-agent-0.1.0.tgz` 发给对方 | 插件页 → 安装 → 填 tgz 的绝对路径 |
+| 发 tgz | 把 `metaontic-video-agent-0.1.1.tgz` 发给对方 | 插件页 → 安装 → 填 tgz 绝对路径 |
 | GitHub | 把本目录推到仓库 | 插件页 → 安装 → 填 `github:你的用户名/metaontic-video-agent` |
 | npm | `npm publish` | 插件页 → 安装 → 填 `metaontic-video-agent`（或 `@scope/名字`） |
 
@@ -143,7 +258,7 @@ npm publish
 
 1. **你发一段创意**（一句话或一段描述）。
 2. **Agent 写 `script.md`**：钩子、分镜表、完整台词、声音、结尾。
-3. **Agent 展示脚本并等你确认**；此时代码里没有 `status: approved`，不会生成。
+3. **Agent 展示脚本并等你确认**；此时 `script.md` 里没有 `status: approved`，不会生成。
 4. **你确认后**：写 `shots.json` + 逐镜提示词，把 `script.md` 标成 `approved`。
 5. **调用 `video_generate`**：≤15 秒直出；>15 秒自动续拍合并；多镜分别生成。
 6. **验收 / 合成 / 交付**：ffprobe、抽帧、ffmpeg 拼接，`present` 成片。
@@ -161,8 +276,8 @@ npm publish
 本包没有自己的配置项。生成参数（上游、模型、每段秒数、分辨率、水印等）都在
 **MetaOnticVideo** 的配置里：
 
-- 对话里：让 Agent 调 `video_config`；
 - 插件页：MetaOnticVideo 的配置卡片；
+- 对话里：让 Agent 调 `video_config`；
 - 手改：profile 的 `cordis.patch.yml` 中 `- id: metaontic-video` 那一项。
 
 Agent 的默认规格写在 `cordis.patch.yml` 的 `persona.prefix` 里，想改默认画幅/时长/风格直接改这段文字，
@@ -182,6 +297,23 @@ Agent 的默认规格写在 `cordis.patch.yml` 的 `persona.prefix` 里，想改
 改完重新安装本 bundle，新建会话验证。技能正文是每次加载时重读的，改 `SKILL.md` 不需要重装；
 `references/` 也是按需读取，改完立即生效。
 
+## 常见问题
+
+| 现象 | 原因 / 怎么办 |
+| --- | --- |
+| 插件页找不到 MetaOnticVideo | spec 写错、网络不通；用 `github:wxsimon2022/metaontic-video` 重试 |
+| 没有 `video_generate` 工具 | MetaOnticVideo 没装/没启用，或装完没重启，或还在旧会话；重启 + 新建会话 |
+| 「未配置 API Key」 | 第二步没填或没保存 |
+| 「鉴权失败」 | Key 错、过期，或中转站地址填错（不要带 `/v1`） |
+| 「额度不足」 | 中转站余额不够，充值后再试 |
+| 「内容审核拒绝」 | 去掉真人/名人/血腥/政治/未成年风险描述，改虚构人物和中性表述 |
+| 「时长超限」 | 每段改成 14 秒，或拆镜 |
+| 找不到 ffmpeg | `brew install ffmpeg`，或在配置里填 `ffmpegBinary` 绝对路径 |
+| 生成很慢 | 正常，通常 1–5 分钟；用 `video_status` 查任务，不要重复提交 |
+| 视频导演不在智能体选择器 | 本 bundle 没安装/没启用；插件页确认后新建会话 |
+| 它没让我确认脚本 | 你可能在旧会话或旧预设；新建「视频导演」会话，并检查 `script.md` 的 `status` 是否为 `draft` |
+| 成片在哪 | Agent 的成片在 `video-projects/<slug>/final/`；MetaOnticVideo 的原始输出/分段在 `metaontic-video/` 或配置的 `outputDir`（留空=会话工作目录下） |
+
 ## 限制
 
 - 本包**不包含**生成后端；没有 MetaOnticVideo 或上游不可用时，Agent 只能写脚本，不能出片。
@@ -194,7 +326,8 @@ Agent 的默认规格写在 `cordis.patch.yml` 的 `persona.prefix` 里，想改
 ## 卸载
 
 在插件页关闭/移除本 bundle 即可；它不写 profile 配置以外的任何状态。
-`video-projects/` 里的项目文件会保留，按需删除。
+`video-projects/` 里的项目文件会保留，按需删除。  
+卸载 MetaOnticVideo 会让 `video_generate` 等工具消失，但不会删除已生成的视频文件。
 
 ## License
 

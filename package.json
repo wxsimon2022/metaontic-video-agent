@@ -1,6 +1,6 @@
 {
   "name": "metaontic-video-agent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness agent preset: a video director that turns an idea into a Seedance short video with MetaOnticVideo - script, shot list, per-shot prompts, generation, QA and ffmpeg assembly.",
   "license": "MIT",
   "author": "wxsimon2022",
