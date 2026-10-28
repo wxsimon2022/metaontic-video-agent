@@ -1,7 +1,7 @@
 {
   "name": "metaontic-video-agent",
-  "version": "0.1.1",
-  "description": "DeepSeek Harness agent preset: a video director that turns an idea into a Seedance short video with MetaOnticVideo - script, shot list, per-shot prompts, generation, QA and ffmpeg assembly.",
+  "version": "0.2.0",
+  "description": "DEPRECATED: the \"video director\" agent preset now ships inside the metaontic-video plugin (v2.1.0+). This package is a no-op kept only so existing installs do not break.",
   "license": "MIT",
   "author": "wxsimon2022",
   "type": "module",
@@ -25,7 +25,6 @@
   ],
   "files": [
     "cordis.patch.yml",
-    "skills",
     "icon.svg",
     "README.md",
     "LICENSE"
@@ -37,5 +36,6 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
-  }
+  },
+  "deprecated": "The video-director preset moved into metaontic-video v2.1.0. Install github:wxsimon2022/metaontic-video instead."
 }
